@@ -1,0 +1,151 @@
+{
+  "feature_order": [
+    "Age",
+    "Gender",
+    "University",
+    "Department",
+    "Academic_Year",
+    "Current_CGPA",
+    "waiver_or_scholarship",
+    "PSS1",
+    "PSS2",
+    "PSS3",
+    "PSS4",
+    "PSS5",
+    "PSS6",
+    "PSS7",
+    "PSS8",
+    "PSS9",
+    "PSS10",
+    "Stress Value",
+    "Stress Label",
+    "GAD1",
+    "GAD2",
+    "GAD3",
+    "GAD4",
+    "GAD5",
+    "GAD6",
+    "GAD7",
+    "Anxiety Value",
+    "Anxiety Label",
+    "PHQ1",
+    "PHQ2",
+    "PHQ3",
+    "PHQ4",
+    "PHQ5",
+    "PHQ6",
+    "PHQ7",
+    "PHQ8",
+    "PHQ9",
+    "Depression Value",
+    "Depression Label",
+    "Financial_Debtor_proxy",
+    "Tuition_UpToDate_proxy",
+    "Parental_SES_proxy",
+    "Economic_Vulnerability_Index"
+  ],
+  "categorical_columns": [
+    "Gender",
+    "University",
+    "Department",
+    "Academic_Year",
+    "waiver_or_scholarship",
+    "Stress Label",
+    "Anxiety Label",
+    "Depression Label",
+    "Financial_Debtor_proxy",
+    "Tuition_UpToDate_proxy",
+    "Parental_SES_proxy"
+  ],
+  "label_encoders": {
+    "Gender": {
+      "Female": 0,
+      "Male": 1,
+      "Prefer not to say": 2
+    },
+    "University": {
+      "American International University Bangladesh (AIUB)": 0,
+      "BRAC University": 1,
+      "Bangladesh Agricultural University (BAU)": 2,
+      "Bangladesh University of Engineering and Technology (BUET)": 3,
+      "Daffodil University": 4,
+      "Dhaka University (DU)": 5,
+      "Dhaka University of Engineering and Technology (DUET)": 6,
+      "East West University (EWU)": 7,
+      "Independent University, Bangladesh (IUB)": 8,
+      "Islamic University of Technology (IUT)": 9,
+      "North South University (NSU)": 10,
+      "Patuakhali Science and Technology University": 11,
+      "Rajshahi University (RU)": 12,
+      "Rajshahi University of Engineering and Technology (RUET)": 13,
+      "United International University (UIU)": 14
+    },
+    "Department": {
+      "Biological Sciences": 0,
+      "Business and Entrepreneurship Studies": 1,
+      "Engineering - CS / CSE / CSC / Similar to CS": 2,
+      "Engineering - Civil Engineering / Similar to CE": 3,
+      "Engineering - EEE/ ECE / Similar to EEE": 4,
+      "Engineering - Mechanical Engineering / Similar to ME": 5,
+      "Engineering - Other": 6,
+      "Environmental and Life Sciences": 7,
+      "Law and Human Rights": 8,
+      "Liberal Arts and Social Sciences": 9,
+      "Other": 10,
+      "Pharmacy and Public Health": 11
+    },
+    "Academic_Year": {
+      "First Year or Equivalent": 0,
+      "Fourth Year or Equivalent": 1,
+      "Other": 2,
+      "Second Year or Equivalent": 3,
+      "Third Year or Equivalent": 4
+    },
+    "waiver_or_scholarship": {
+      "No": 0,
+      "Yes": 1
+    },
+    "Stress Label": {
+      "High Perceived Stress": 0,
+      "Low Stress": 1,
+      "Moderate Stress": 2
+    },
+    "Anxiety Label": {
+      "Mild Anxiety": 0,
+      "Minimal Anxiety": 1,
+      "Moderate Anxiety": 2,
+      "Severe Anxiety": 3
+    },
+    "Depression Label": {
+      "Mild Depression": 0,
+      "Minimal Depression": 1,
+      "Moderate Depression": 2,
+      "Moderately Severe Depression": 3,
+      "No Depression": 4,
+      "Severe Depression": 5
+    },
+    "Financial_Debtor_proxy": {
+      "No": 0,
+      "Yes": 1
+    },
+    "Tuition_UpToDate_proxy": {
+      "No": 0,
+      "Yes": 1
+    },
+    "Parental_SES_proxy": {
+      "Cadre_intellectuel_superieur": 0,
+      "Employe_technicien": 1,
+      "Non_specifie_ou_sans_emploi": 2,
+      "Ouvrier_metier_manuel": 3
+    }
+  },
+  "mental_health_shift": {
+    "Stress Value": 5.0,
+    "Anxiety Value": 6.0,
+    "Depression Value": 7.0
+  },
+  "median_imputation": {
+    "Age": 20.0,
+    "Current_CGPA": 3.1950000000000003
+  }
+}

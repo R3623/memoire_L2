@@ -1,0 +1,181 @@
+================================================================================
+ UniGlobal.Predict — GUIDE D'EXECUTION ET DE DEPLOIEMENT
+================================================================================
+
+------------------------------------------------------------
+1. LANCER L'APPLICATION EN LOCAL
+------------------------------------------------------------
+
+Depuis la racine du projet (le dossier qui contient app.py) :
+
+    # 1) Activer l'environnement virtuel (voir README.md, Etape 1)
+    source venv/bin/activate            # macOS / Linux
+    venv\Scripts\activate               # Windows
+
+    # 2) Installer les dependances (si pas deja fait)
+    pip install -r requirements.txt
+
+    # 3) Lancer l'application
+    streamlit run app.py
+
+Streamlit ouvre automatiquement un onglet de navigateur sur :
+    http://localhost:8501
+
+Pour changer le port :
+    streamlit run app.py --server.port 8888
+
+
+------------------------------------------------------------
+2. RELATION ENTRE LES FICHIERS DU PROJET
+------------------------------------------------------------
+
+Schema de dependance (qui importe quoi) :
+
+    app.py
+      └── pages_app/  (une page = un onglet de la sidebar)
+            ├── page_self_assessment.py   ──┐
+            ├── page_admin_dashboard.py    ─┼── importent tous utils/preprocessing.py
+            ├── page_explainability.py     ─┤     et utils/model_helper.py
+            └── page_model_performance.py ──┘     (page_model_performance importe
+                                                    en plus utils/evaluation.py)
+
+    utils/preprocessing.py
+      └── lit models/preprocessing_artifacts.json au demarrage
+          (encodeurs + medianes figes a l'entrainement -> ne JAMAIS le
+           supprimer ou le regenerer avec un autre random_state que 42,
+           sous peine de decalage avec le modele .pkl)
+
+    utils/model_helper.py
+      └── charge models/best_dropout_model.pkl (mis en cache via lru_cache :
+          le modele n'est charge qu'une seule fois par session serveur)
+      └── utilise utils/preprocessing.FEATURE_ORDER pour toujours passer
+          les colonnes au modele dans le bon ordre
+
+    utils/evaluation.py
+      └── relit data/Processed_augmented_5000.csv et rejoue EXACTEMENT le
+          train_test_split(test_size=0.2, random_state=42, stratify=Y) du
+          notebook construction_modele.ipynb, pour que les metriques
+          affichees dans l'onglet "Performances du Modele" correspondent
+          au meme jeu de test que celui utilise pour choisir le modele.
+
+    utils/questionnaires.py
+      └── independant des autres modules utils/ : contient uniquement les
+          vraies questions PSS-10 / GAD-7 / PHQ-9 (recopiees depuis
+          data/Stress.csv, data/Anxiety.csv, data/Depression.csv) et les
+          baremes cliniques (score -> label). Utilise uniquement par
+          page_self_assessment.py.
+
+Pourquoi cette organisation ?
+  - Separer "donnees/preprocessing" (utils/preprocessing.py) de "modele/
+    predictions" (utils/model_helper.py) permet de reutiliser le meme
+    pipeline de nettoyage aussi bien pour UNE ligne (formulaire etudiant)
+    que pour UN LOT de lignes (upload CSV admin), sans dupliquer de code.
+  - Isoler evaluation.py evite de recalculer inutilement les metriques a
+    chaque interaction : elles ne dependent pas de l'input utilisateur
+    (seul le seuil de decision change, ce qui est peu couteux a recalculer).
+  - Une page = un fichier rend chaque onglet testable et modifiable
+    independamment, sans risquer de casser les 3 autres.
+
+
+------------------------------------------------------------
+3. RECREER LE PROJET MANUELLEMENT (si vous partez de zero)
+------------------------------------------------------------
+
+Etape par etape, dans un dossier vide :
+
+    mkdir uniglobal_app && cd uniglobal_app
+    mkdir -p .streamlit models data utils pages_app
+
+    # utils/ et pages_app/ sont des packages Python : chacun a besoin
+    # d'un fichier vide __init__.py
+    touch utils/__init__.py
+    touch pages_app/__init__.py
+
+    # Copier vos fichiers fournis :
+    cp /chemin/vers/best_dropout_model.pkl        models/
+    cp /chemin/vers/Processed_augmented_5000.csv  data/
+    cp /chemin/vers/Anxiety.csv                    data/
+    cp /chemin/vers/Depression.csv                 data/
+    cp /chemin/vers/Stress.csv                     data/
+
+    # Puis creer, dans cet ordre (chaque fichier depend des precedents) :
+    #   1. utils/preprocessing.py       (ne depend de rien d'autre)
+    #   2. utils/questionnaires.py      (independant)
+    #   3. utils/model_helper.py        (depend de preprocessing.py)
+    #   4. utils/evaluation.py          (depend de preprocessing.py + model_helper.py)
+    #   5. pages_app/page_*.py          (4 fichiers, dependent de utils/)
+    #   6. app.py                       (depend de pages_app/)
+    #   7. .streamlit/config.toml, requirements.txt, README.md
+
+IMPORTANT : models/preprocessing_artifacts.json n'existe pas au depart. Il a
+ete genere UNE SEULE FOIS en rejouant le train_test_split(random_state=42) du
+notebook construction_modele.ipynb sur data/Processed_augmented_5000.csv, afin
+de recuperer :
+  - "feature_order"      : la liste exacte des 43 colonnes, dans l'ordre
+                             attendu par le modele (verifie avec
+                             model.feature_names_in_) ;
+  - "categorical_columns" : les colonnes textuelles encodees par LabelEncoder ;
+  - "label_encoders"      : pour chaque colonne categorielle, le mapping
+                             {categorie: code entier} appris SUR LE TRAIN
+                             uniquement (comme dans le notebook) ;
+  - "mental_health_shift" : le decalage applique aux colonnes "Stress Value",
+                             "Anxiety Value", "Depression Value" si leur min
+                             sur le train est negatif ;
+  - "median_imputation"   : les medianes (Age, Current_CGPA) apprises sur le
+                             train pour l'imputation des valeurs manquantes.
+
+Si vous deviez le regenerer (par exemple avec un nouveau dataset), il FAUT
+reprendre exactement les memes etapes que dans construction_modele.ipynb,
+avec le meme random_state=42, sous peine d'obtenir des encodages differents
+de ceux appris par le modele deja entraine -> predictions faussees.
+
+
+------------------------------------------------------------
+4. DEPLOIEMENT SUR STREAMLIT COMMUNITY CLOUD
+------------------------------------------------------------
+
+1) Poussez le projet complet sur un repository GitHub PUBLIC (ou prive si vous
+   avez un compte Streamlit Cloud avec acces aux repos prives), en incluant :
+       - app.py, utils/, pages_app/, requirements.txt
+       - .streamlit/config.toml
+       - models/best_dropout_model.pkl
+       - models/preprocessing_artifacts.json   <-- NE PAS OUBLIER CE FICHIER
+       - data/Processed_augmented_5000.csv, Anxiety.csv, Depression.csv, Stress.csv
+
+   Attention a la taille du fichier .pkl : si votre plan Git/GitHub a une
+   limite (souvent 100 Mo par fichier sur GitHub standard), verifiez que
+   best_dropout_model.pkl est bien en dessous. Si besoin, utilisez Git LFS
+   (Large File Storage) :
+       git lfs install
+       git lfs track "*.pkl"
+       git add .gitattributes
+
+2) Rendez-vous sur https://share.streamlit.io et connectez-vous avec votre
+   compte GitHub.
+
+3) Cliquez sur "New app", puis renseignez :
+       - Repository   : votre-utilisateur/uniglobal-app
+       - Branch       : main (ou celle de votre choix)
+       - Main file path : app.py
+
+4) Streamlit Cloud installe automatiquement les dependances listees dans
+   requirements.txt, puis demarre l'application. Le premier demarrage peut
+   prendre quelques minutes (installation de xgboost, shap, etc.).
+
+5) Une fois deployee, l'application est accessible via une URL du type :
+       https://votre-utilisateur-uniglobal-app.streamlit.app
+
+6) Pour mettre a jour l'application : il suffit de pousser un nouveau commit
+   sur la branche deployee ; Streamlit Cloud redeploie automatiquement.
+
+Conseils pour la production :
+  - Ne mettez PAS de donnees etudiantes reelles/nominatives dans le
+    repository GitHub si celui-ci est public (RGPD / protection des donnees
+    personnelles). Le dataset fourni ici est deja anonymise/synthetique.
+  - Si le volume d'uploads CSV attendu est important, pensez a augmenter
+    `server.maxUploadSize` dans .streamlit/config.toml (actuellement 50 Mo).
+  - Le message de soutien affiche en cas de reponse positive a l'item PHQ-9
+    (page Auto-evaluation) doit etre adapte, avant une mise en production
+    reelle, avec les coordonnees exactes du service de sante mentale et des
+    lignes d'ecoute locales de votre/vos institut(s) universitaire(s).
+================================================================================
